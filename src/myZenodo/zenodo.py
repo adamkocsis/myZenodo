@@ -169,25 +169,37 @@ def new_version(depid):
 def publish(depid):
     # define the access token from module-variable
     params = {'access_token': TOKEN}
-    
-    # try to publish this
-    published = requests.post(LINK + '/api/deposit/depositions/%s/actions/publish' % depid, params=params)
-    
-    print("Successfully published " + str(depid))
-    # get the bucket url for this upload
-
-    # frequently gets FF-ed up
-    doiTry=True
-    while doiTry:
-        # first get a request for this depid
-        req = requests.get(LINK + '/api/deposit/depositions/' + str(depid), params = params)
-        # get the download links for this 
-        try:
-            doi=req.json()['doi']
-            doiTry=False
-        except: 
-            print("Failed json doi access, trying again. ")
-    
+    sc=0
+    while sc!=200:
+        # try to publish this
+        published = requests.post(LINK + '/api/deposit/depositions/%s/actions/publish' % depid, params=params)
+        print("Potentially published " + str(depid))
+        # get the bucket url for this upload
+        # frequently gets FF-ed up
+        doiTry=True
+        while doiTry:
+            try:
+                # first get a request for this depid
+                req = requests.get(LINK + '/api/deposit/depositions/' + str(depid), params = params)
+                # get the download links for this 
+                doi=req.json()['doi']
+                doiTry=False
+            except: 
+                print("Failed json doi access, trying again. ")
+        # really try to download the file to make sure
+        count=0
+        trials=3
+        while count<trials:
+            allFiles=list_files(depid)
+            download= LINK + '/record/' + str(depid) + '/files/' + allFiles[0] + '?download=1'
+            r = requests.get(download, allow_redirects=True)
+            # get the status code
+            sc = r.status_code
+            if sc !=200:
+                count = count +1
+            else:
+                count = trials
+            
     return(doi)
 
 
